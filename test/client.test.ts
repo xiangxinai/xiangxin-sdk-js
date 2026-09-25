@@ -260,9 +260,12 @@ describe('errors', () => {
 
 describe('retries', () => {
   it('retries 429 after waiting for retry-after', async () => {
-    vi.useFakeTimers()
+    // 只伪造定时器与时钟：Node 18 的 Response.text() 要等一次真实 I/O 才完成，
+    // 先把它冲刷掉，等待才会从 0 开始计时（否则测试依赖 Node 版本的内部调度）。
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     const { fetch } = mockFetch(json({ detail: 'rate_limited' }, 429, { 'retry-after': '2' }), json(SYSTEM_ONE_BODY))
     const p = client(fetch).systemOne({ state: 'x', questions })
+    for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r))
     await vi.advanceTimersByTimeAsync(1_900)
     expect(fetch).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(200)

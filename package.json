@@ -1,0 +1,65 @@
+{
+  "name": "@xiangxinai/sdk",
+  "version": "0.1.0",
+  "description": "象信 AI 官方 JavaScript / TypeScript SDK —— 调用象信一号系统一模型（System One API）",
+  "license": "Apache-2.0",
+  "author": "象信 AI <support@xiangxinai.cn>",
+  "homepage": "https://docs.xiangxinai.cn/sdk/javascript",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/xiangxinai/xiangxin-sdk-js.git"
+  },
+  "bugs": {
+    "url": "https://github.com/xiangxinai/xiangxin-sdk-js/issues"
+  },
+  "keywords": [
+    "xiangxin",
+    "xiangxinai",
+    "system-one",
+    "classification",
+    "llm",
+    "sdk",
+    "typescript"
+  ],
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      },
+      "require": {
+        "types": "./dist/index.d.cts",
+        "default": "./dist/index.cjs"
+      }
+    },
+    "./package.json": "./package.json"
+  },
+  "sideEffects": false,
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "pnpm typecheck && pnpm test && pnpm build"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsup": "^8.3.5",
+    "typescript": "^5.7.2",
+    "vitest": "^3.0.0"
+  }
+}

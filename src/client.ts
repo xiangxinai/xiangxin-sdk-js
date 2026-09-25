@@ -39,7 +39,7 @@ export interface XiangxinClientConfig {
    * / Default model; falls back to `XIANGXIN_DEFAULT_MODEL`, then `xiangxin-latest`.
    */
   defaultModel?: string
-  /** 每次尝试的超时（毫秒），默认 30000。 / Timeout per attempt in ms. Default 30000. */
+  /** 每次尝试的超时（毫秒），默认 120000。 / Timeout per attempt in ms. Default 120000. */
   timeout?: number
   /** 重试策略的部分覆盖。 / Partial retry overrides. */
   retry?: Partial<RetryPolicy>

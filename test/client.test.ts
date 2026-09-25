@@ -68,7 +68,7 @@ describe('configuration', () => {
     const c = new XiangxinClient({ apiKey: KEY, fetch: mockFetch().fetch })
     expect(c.baseURL).toBe('https://api.xiangxinai.cn')
     expect(c.defaultModel).toBe('xiangxin-latest')
-    expect(c.timeout).toBe(30_000)
+    expect(c.timeout).toBe(120_000)
     expect(c.logLevel).toBe('warn')
     expect(c.retry.maxRetries).toBe(2)
     expect([...c.retry.httpStatuses].sort()).toEqual([429, 500, 502, 503, 504, 529])

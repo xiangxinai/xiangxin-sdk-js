@@ -130,7 +130,7 @@ try {
 
 ```ts
 const client = new XiangxinClient({
-  timeout: 10_000,                              // 每次尝试的超时（毫秒），默认 30000
+  timeout: 10_000,                              // 每次尝试的超时（毫秒），默认 120000
   retry: { maxRetries: 4, backoffMaxMs: 4_000 },
 })
 

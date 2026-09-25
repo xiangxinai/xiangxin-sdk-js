@@ -1,9 +1,9 @@
 {
   "name": "@xiangxinai/sdk",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "象信 AI 官方 JavaScript / TypeScript SDK —— 调用象信一号系统一模型（System One API）",
   "license": "Apache-2.0",
-  "author": "象信 AI <support@xiangxinai.cn>",
+  "author": "象信AI <wanglei@xiangxinai.cn>",
   "homepage": "https://docs.xiangxinai.cn/sdk/javascript",
   "repository": {
     "type": "git",

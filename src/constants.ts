@@ -33,6 +33,38 @@ export const DEFAULT_MODEL = 'xiangxin-latest'
 /** 每次尝试的默认超时（毫秒）。 / Default timeout per attempt, in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（32k token）+ 多问题的请求可达约 60 秒
 
+/** `reflexes.create` 的最短超时（毫秒）：请求体最大 50MB，上传需要更久。 / Minimum timeout for `reflexes.create`, in ms. */
+export const REFLEX_CREATE_TIMEOUT_MS = 300_000
+
+/** 系统一模型（象信一号）的别名。 / Alias of the System One model (象信一号). */
+export const S1_MODEL = 'xiangxin-s1'
+
+/** 基础条件反射模型的别名。 / Alias of the base reflex model. */
+export const REFLEX_MODEL = 'xiangxin-reflex'
+
+/** 训练结束的状态，`reflexes.wait` 等到其中之一即返回。 / Final statuses awaited by `reflexes.wait`. */
+export const REFLEX_FINAL_STATUSES: ReadonlySet<string> = new Set(['ready', 'failed', 'cancelled'])
+
+const REFLEX_NAME_RE = /^[a-z0-9][a-z0-9-]{0,62}$/
+
+/**
+ * 练出来的反射的模型名，用作 `systemOne` 的 `model`。
+ *
+ * Model name of a trained reflex, for the `model` of `systemOne`.
+ *
+ * @example
+ * reflexModel('ticket-router') // 'xiangxin-reflex:ticket-router'
+ * @throws {TypeError} 名字不符合 `^[a-z0-9][a-z0-9-]{0,62}$`。 / Invalid reflex name.
+ */
+export function reflexModel<const N extends string>(name: N): `xiangxin-reflex:${N}` {
+  if (typeof name !== 'string' || !REFLEX_NAME_RE.test(name)) {
+    throw new TypeError(
+      `反射名须为小写字母、数字或连字符（1–63 个字符，不以连字符开头） / invalid reflex name: ${JSON.stringify(name)}`,
+    )
+  }
+  return `${REFLEX_MODEL}:${name}`
+}
+
 /** 默认日志级别。 / Default log level. */
 export const DEFAULT_LOG_LEVEL: LogLevel = 'warn'
 

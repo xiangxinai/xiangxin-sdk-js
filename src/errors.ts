@@ -1,4 +1,5 @@
 import { REQUEST_ID_HEADER } from './constants.js'
+import type { Reflex } from './types.js'
 
 /**
  * 所有 SDK 错误的基类；配置错误（如缺少 API 密钥）也直接抛出此类。
@@ -84,6 +85,18 @@ export class PermissionDeniedError extends APIError {}
 export class NotFoundError extends APIError {}
 
 /**
+ * 409：与资源当前状态冲突，不会自动重试。`detail` 为 `reflex_not_ready`（反射首次训练尚未完成）、
+ * `reflex_busy`（正在训练，不能再次提交）或 `too_many_reflexes: …`（已达组织上限）。
+ *
+ * Conflicts with the resource's state; never retried. `detail` is `reflex_not_ready`,
+ * `reflex_busy` or `too_many_reflexes: …`.
+ */
+export class ConflictError extends APIError {}
+
+/** 413：请求体过大，例如练反射的样本超过 50MB。 / The request body is too large, e.g. reflex examples above 50MB. */
+export class RequestTooLargeError extends APIError {}
+
+/**
  * 422：请求未通过服务端校验（选项过多、超出 token 上限等）。不会自动重试。
  *
  * The request failed validation (too many choices, too many tokens, ...). Never retried.
@@ -142,6 +155,21 @@ export class APIUserAbortError extends XiangxinError {
   }
 }
 
+/**
+ * `reflexes.wait` 在限定时间内没有等到训练结束；训练本身不受影响。
+ *
+ * `reflexes.wait` gave up before training finished; the training itself continues.
+ */
+export class WaitTimeoutError extends XiangxinError {
+  /** 最后一次查询到的反射。 / The reflex as last observed. */
+  readonly reflex: Reflex | undefined
+
+  constructor(message: string, reflex?: Reflex, options?: ErrorOptions) {
+    super(message, options)
+    this.reflex = reflex
+  }
+}
+
 type APIErrorClass = new (status: number, body: unknown, headers: Headers) => APIError
 
 const STATUS_TO_ERROR: Readonly<Record<number, APIErrorClass>> = {
@@ -150,6 +178,8 @@ const STATUS_TO_ERROR: Readonly<Record<number, APIErrorClass>> = {
   402: InsufficientBalanceError,
   403: PermissionDeniedError,
   404: NotFoundError,
+  409: ConflictError,
+  413: RequestTooLargeError,
   422: UnprocessableEntityError,
   429: RateLimitError,
   529: OverloadedError,

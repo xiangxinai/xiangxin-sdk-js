@@ -295,9 +295,11 @@ describe('reflexes.wait', () => {
   })
 
   it('waits pollIntervalMs between polls', async () => {
-    vi.useFakeTimers()
+    // 只伪造定时器与时钟，并先冲刷真实 I/O：Node 18 的 Response.json() 要等一次真实 I/O 才完成
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout', 'Date'] })
     const { fetch } = mockFetch(json(reflex('training')), json(reflex('ready')))
     const p = client(fetch).reflexes.wait('ticket-router')
+    for (let i = 0; i < 5; i++) await new Promise((r) => setImmediate(r))
     await vi.advanceTimersByTimeAsync(1_999)
     expect(fetch).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(1)

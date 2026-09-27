@@ -153,7 +153,7 @@ export interface Usage {
 
 /** `systemOne` 的结果。 / Result of `systemOne`. */
 export interface SystemOneResult<Q extends Questions = Questions> {
-  /** 实际作答的模型版本，如 `xiangxin-1.0.0`。 / Resolved model, e.g. `xiangxin-1.0.0`. */
+  /** 实际作答的模型版本，如 `xiangxin-s1-1.0.0`。 / Resolved model, e.g. `xiangxin-s1-1.0.0`. */
   readonly model: string
   /** 按问题名索引、带类型的答案。 / Typed answers keyed by question name. */
   readonly answers: { readonly [K in keyof Q]: ResultFor<Q[K]> }

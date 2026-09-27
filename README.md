@@ -1,8 +1,8 @@
 # 象信 AI JavaScript / TypeScript SDK
 
-`@xiangxinai/sdk` 是 [象信 AI](https://xiangxinai.cn) 的官方 JavaScript / TypeScript SDK，用于调用**象信一号**系统一模型。
+`@xiangxinai/sdk` 是 [象信 AI](https://xiangxinai.cn) 的官方 JavaScript / TypeScript SDK，用于调用**象信·系统一**系统一模型。
 
-象信一号不生成文本：你给它一段**状态（state）**和一组**带类型的问题**，它一次前向就返回带校准概率的结构化答案。
+象信·系统一不生成文本：你给它一段**状态（state）**和一组**带类型的问题**，它一次前向就返回带校准概率的结构化答案。
 
 | 原语 | 辅助函数 | 答案字段 |
 |---|---|---|
@@ -58,7 +58,7 @@ answers.department.choice       // 'billing'，类型为 'billing' | 'technical'
 answers.department.confidence   // 0.81
 answers.frustration.score       // 1.05
 answers.frustration.legend['2'] // '非常愤怒'
-console.log(model, usage.input_tokens) // xiangxin-1.0.0 296
+console.log(model, usage.input_tokens) // xiangxin-s1-1.0.0 296
 ```
 
 CommonJS 同样可用：
@@ -86,13 +86,13 @@ const models = await client.models.list()
 for (const m of models) console.log(m.name, m.release_date, m.description)
 ```
 
-默认模型为 `xiangxin-latest`。可以用 `new XiangxinClient({ defaultModel })` 或单次调用的 `model` 覆盖。
+默认模型为 `xiangxin-s1-latest`。可以用 `new XiangxinClient({ defaultModel })` 或单次调用的 `model` 覆盖。
 
 两个模型家族共用同一个 `systemOne` 接口，只换 `model`：
 
 | 模型 | 常量 | 说明 |
 |---|---|---|
-| `xiangxin-s1` | `S1_MODEL` | 系统一（象信一号），有世界知识，零样本即可判断 |
+| `xiangxin-s1` | `S1_MODEL` | 系统一（象信·系统一），有世界知识，零样本即可判断 |
 | `xiangxin-reflex` | `REFLEX_MODEL` | 基础条件反射，毫秒级、固定耗时，价格为系统一的 1/100 |
 | `xiangxin-reflex:<名字>` | `reflexModel('<名字>')` | 用你自己的数据练出来的反射 |
 
@@ -198,7 +198,7 @@ const client = new XiangxinClient({ logLevel: 'info', logger: myLogger }) // log
 |---|---|---|
 | `XIANGXIN_API_KEY` | API 密钥（必填） | — |
 | `XIANGXIN_BASE_URL` | API 根地址 | `https://api.xiangxinai.cn` |
-| `XIANGXIN_DEFAULT_MODEL` | 默认模型 | `xiangxin-latest` |
+| `XIANGXIN_DEFAULT_MODEL` | 默认模型 | `xiangxin-s1-latest` |
 | `XIANGXIN_LOG` | 日志级别 | `warn` |
 
 显式传入的参数优先于环境变量。

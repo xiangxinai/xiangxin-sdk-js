@@ -47,8 +47,8 @@ export interface XiangxinClientConfig {
    */
   baseURL?: string
   /**
-   * 请求省略 `model` 时使用的模型，默认读取 `XIANGXIN_DEFAULT_MODEL`，否则为 `xiangxin-latest`。
-   * / Default model; falls back to `XIANGXIN_DEFAULT_MODEL`, then `xiangxin-latest`.
+   * 请求省略 `model` 时使用的模型，默认读取 `XIANGXIN_DEFAULT_MODEL`，否则为 `xiangxin-s1-latest`。
+   * / Default model; falls back to `XIANGXIN_DEFAULT_MODEL`, then `xiangxin-s1-latest`.
    */
   defaultModel?: string
   /** 每次尝试的超时（毫秒），默认 120000。 / Timeout per attempt in ms. Default 120000. */

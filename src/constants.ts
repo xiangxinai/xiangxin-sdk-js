@@ -9,7 +9,7 @@ export const ENV = {
   apiKey: 'XIANGXIN_API_KEY',
   /** API 根地址，默认 `https://api.xiangxinai.cn`。 / API root; defaults to `https://api.xiangxinai.cn`. */
   baseURL: 'XIANGXIN_BASE_URL',
-  /** 默认模型，默认 `xiangxin-latest`。 / Default model; defaults to `xiangxin-latest`. */
+  /** 默认模型，默认 `xiangxin-s1-latest`。 / Default model; defaults to `xiangxin-s1-latest`. */
   defaultModel: 'XIANGXIN_DEFAULT_MODEL',
   /** 日志级别，默认 `warn`。 / Log level; defaults to `warn`. */
   logLevel: 'XIANGXIN_LOG',
@@ -28,7 +28,7 @@ export const LOG_LEVELS: readonly LogLevel[] = Object.freeze(['debug', 'info', '
 export const DEFAULT_BASE_URL = 'https://api.xiangxinai.cn'
 
 /** 默认模型。 / Default model. */
-export const DEFAULT_MODEL = 'xiangxin-latest'
+export const DEFAULT_MODEL = 'xiangxin-s1-latest'
 
 /** 每次尝试的默认超时（毫秒）。 / Default timeout per attempt, in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（32k token）+ 多问题的请求可达约 60 秒
@@ -36,7 +36,7 @@ export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（32k token）+ 多问题
 /** `reflexes.create` 的最短超时（毫秒）：请求体最大 50MB，上传需要更久。 / Minimum timeout for `reflexes.create`, in ms. */
 export const REFLEX_CREATE_TIMEOUT_MS = 300_000
 
-/** 系统一模型（象信一号）的别名。 / Alias of the System One model (象信一号). */
+/** 系统一模型（象信·系统一）的别名。 / Alias of the System One model (象信·系统一). */
 export const S1_MODEL = 'xiangxin-s1'
 
 /** 基础条件反射模型的别名。 / Alias of the base reflex model. */

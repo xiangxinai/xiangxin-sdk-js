@@ -37,7 +37,7 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-      - run: npm publish --provenance --access public
+      - run: npm publish --provenance --access public --loglevel verbose
 
   github-release:
     needs: publish

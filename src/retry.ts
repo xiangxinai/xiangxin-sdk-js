@@ -9,17 +9,17 @@ import { APIConnectionError, APIError, APITimeoutError, RateLimitError, parseRet
 export interface RetryPolicy {
   /** 首次请求之外的最大重试次数；`0` 关闭重试。默认 2。 / Retries after the first attempt. Default 2. */
   readonly maxRetries: number
-  /** 会重试的 HTTP 状态码。默认 429、500、502、503、504、529。 / Retried statuses. */
+  /** 会重试的 HTTP 状态码。默认 408、429 与全部 5xx。 / Retried statuses. Default 408, 429 and all 5xx. */
   readonly httpStatuses: ReadonlySet<number>
   /** 首次退避（毫秒），之后每次翻倍。默认 500。 / First backoff in ms, doubled each retry. Default 500. */
   readonly backoffInitialMs: number
-  /** 单次退避上限（毫秒）。默认 8000。 / Maximum backoff in ms. Default 8000. */
+  /** 单次退避上限（毫秒）。默认 5000。 / Maximum backoff in ms. Default 5000. */
   readonly backoffMaxMs: number
   /** 每次退避随机扣减的比例（0–1）。默认 0.25。 / Fraction randomly subtracted. Default 0.25. */
   readonly backoffJitter: number
   /** 是否遵守 `retry-after` / `retry-after-ms`。默认 true。 / Honor retry-after headers. Default true. */
   readonly respectRetryAfter: boolean
-  /** 服务端建议等待时间的上限（毫秒），超出按上限等待。默认 60000。 / Cap for server delays. Default 60000. */
+  /** 服务端建议等待时间的上限（毫秒），超出则不采纳、改用指数退避。默认 60000。 / Longer server delays fall back to backoff. Default 60000. */
   readonly maxRetryAfterMs: number
   /** 是否重试连接错误（`APIConnectionError`）。默认 true。 / Retry connection errors. Default true. */
   readonly apiConnectionError: boolean
@@ -28,14 +28,14 @@ export interface RetryPolicy {
 }
 
 /** 默认会重试的 HTTP 状态码。 / HTTP statuses retried by default. */
-export const DEFAULT_RETRY_STATUSES: ReadonlySet<number> = new Set([429, 500, 502, 503, 504, 529])
+export const DEFAULT_RETRY_STATUSES: ReadonlySet<number> = new Set([408, 429, ...Array.from({ length: 100 }, (_, i) => 500 + i)])
 
 /** 默认重试策略。 / The default retry policy. */
 export const DEFAULT_RETRY_POLICY: RetryPolicy = Object.freeze({
   maxRetries: 2,
   httpStatuses: DEFAULT_RETRY_STATUSES,
   backoffInitialMs: 500,
-  backoffMaxMs: 8000,
+  backoffMaxMs: 5000,
   backoffJitter: 0.25,
   respectRetryAfter: true,
   maxRetryAfterMs: 60_000,
@@ -73,10 +73,10 @@ export function isRetryable(policy: RetryPolicy, error: unknown): boolean {
 }
 
 /**
- * 第 `retryIndex` 次重试（从 0 起）前的等待毫秒数：优先服务端建议（封顶 `maxRetryAfterMs`），否则指数退避加抖动。
+ * 第 `retryIndex` 次重试（从 0 起）前的等待毫秒数：优先服务端建议（不超过 `maxRetryAfterMs` 时），否则指数退避加抖动。
  *
- * Delay before the `retryIndex`-th retry (0-based): the server's hint (capped at
- * `maxRetryAfterMs`) when present, otherwise exponential backoff with jitter.
+ * Delay before the `retryIndex`-th retry (0-based): the server's hint when it is at most
+ * `maxRetryAfterMs`, otherwise exponential backoff with jitter.
  */
 export function retryDelayMs(
   policy: RetryPolicy,
@@ -86,7 +86,7 @@ export function retryDelayMs(
 ): number {
   if (policy.respectRetryAfter && error instanceof APIError) {
     const hinted = error instanceof RateLimitError ? error.retryAfterMs : parseRetryAfterMs(error.headers)
-    if (hinted !== undefined) return Math.min(hinted, policy.maxRetryAfterMs)
+    if (hinted !== undefined && hinted <= policy.maxRetryAfterMs) return hinted
   }
   if (policy.backoffInitialMs <= 0 || policy.backoffMaxMs <= 0) return 0
   const base = Math.min(policy.backoffMaxMs, policy.backoffInitialMs * 2 ** retryIndex)

@@ -47,6 +47,7 @@ export {
   REFLEX_MODEL,
   reflexModel,
   REQUEST_ID_HEADER,
+  RETRY_COUNT_HEADER,
   MODEL_MS_HEADER,
   TOTAL_MS_HEADER,
   type EnvVar,

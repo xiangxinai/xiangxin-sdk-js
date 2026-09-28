@@ -73,7 +73,8 @@ describe('configuration', () => {
     expect(c.timeout).toBe(120_000)
     expect(c.logLevel).toBe('warn')
     expect(c.retry.maxRetries).toBe(2)
-    expect([...c.retry.httpStatuses].sort()).toEqual([429, 500, 502, 503, 504, 529])
+    expect(c.retry.httpStatuses.has(408) && c.retry.httpStatuses.has(429) && c.retry.httpStatuses.has(501)).toBe(true)
+    expect(c.retry.httpStatuses.has(599) && !c.retry.httpStatuses.has(422) && !c.retry.httpStatuses.has(600)).toBe(true)
   })
 
   it('throws XiangxinError when the API key is missing or malformed', () => {
@@ -277,7 +278,7 @@ describe('retries', () => {
     expect((await p).model).toBe('xiangxin-s1-1.0.0')
   })
 
-  it('prefers retry-after-ms and caps server delays at maxRetryAfterMs', async () => {
+  it('prefers retry-after-ms; hints beyond maxRetryAfterMs fall back to backoff', async () => {
     vi.useFakeTimers()
     const { fetch } = mockFetch(
       json({ detail: 'rate_limited' }, 429, { 'retry-after-ms': '150', 'retry-after': '100' }),
@@ -285,13 +286,19 @@ describe('retries', () => {
       json(SYSTEM_ONE_BODY),
     )
     const p = client(fetch).systemOne({ state: 'x', questions })
-    await vi.advanceTimersByTimeAsync(160)
-    expect(fetch).toHaveBeenCalledTimes(2)
-    await vi.advanceTimersByTimeAsync(59_000)
-    expect(fetch).toHaveBeenCalledTimes(2)
-    await vi.advanceTimersByTimeAsync(1_100)
+    await vi.advanceTimersByTimeAsync(140)
+    expect(fetch).toHaveBeenCalledTimes(1) // 按 retry-after-ms 等 150ms，而不是 retry-after 的 100 秒
+    // 150ms 时第 2 次请求又拿到 retry-after: 3600：不采纳，按（测试里 1–2ms 的）退避马上发第 3 次
+    await vi.advanceTimersByTimeAsync(20)
     expect(fetch).toHaveBeenCalledTimes(3)
     await p
+  })
+
+  it('retries 408 and any 5xx, marking retries with x-xiangxin-retry-count', async () => {
+    const { fetch, calls } = mockFetch(json({ detail: 'x' }, 408), json({ detail: 'x' }, 520), json(SYSTEM_ONE_BODY))
+    await client(fetch).systemOne({ state: 'x', questions })
+    expect(fetch).toHaveBeenCalledTimes(3)
+    expect(calls.map((c) => c.headers['x-xiangxin-retry-count'])).toEqual([undefined, '1', '2'])
   })
 
   it('retries 529 and succeeds', async () => {
@@ -337,10 +344,11 @@ describe('retries', () => {
     const err = new OverloadedError(529, undefined, new Headers())
     expect(retryDelayMs(p, err, 0, () => 0)).toBe(500)
     expect(retryDelayMs(p, err, 1, () => 0)).toBe(1000)
-    expect(retryDelayMs(p, err, 10, () => 0)).toBe(8000)
+    expect(retryDelayMs(p, err, 10, () => 0)).toBe(5000)
     expect(retryDelayMs(p, err, 0, () => 1)).toBe(375)
     const limited = new RateLimitError(429, undefined, new Headers({ 'retry-after': '120' }))
-    expect(retryDelayMs(p, limited, 0)).toBe(60_000)
+    expect(retryDelayMs(p, limited, 0, () => 0)).toBe(500) // 超过 60 秒的建议改用退避
+    expect(retryDelayMs(p, new RateLimitError(429, undefined, new Headers({ 'retry-after': '30' })), 0)).toBe(30_000)
     expect(retryDelayMs({ ...p, respectRetryAfter: false }, limited, 0, () => 0)).toBe(500)
     expect(() => resolveRetryPolicy(p, { backoffJitter: 2 })).toThrow()
   })

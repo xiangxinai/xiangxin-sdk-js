@@ -9,6 +9,7 @@ import {
   REFLEX_FINAL_STATUSES,
   REQUEST_ID_HEADER,
   type LogLevel,
+  RETRY_COUNT_HEADER,
 } from './constants.js'
 import {
   APIConnectionError,
@@ -571,7 +572,8 @@ export class XiangxinClient {
     for (let attempt = 0; ; attempt++) {
       if (signal?.aborted) throw new APIUserAbortError(undefined, { cause: signal.reason })
       try {
-        return await this.#attempt(method, url, path, headers, payload, timeout, signal)
+        const attemptHeaders = attempt === 0 ? headers : { ...headers, [RETRY_COUNT_HEADER]: String(attempt) }
+        return await this.#attempt(method, url, path, attemptHeaders, payload, timeout, signal)
       } catch (error) {
         if (error instanceof APIUserAbortError || attempt >= policy.maxRetries || !isRetryable(policy, error)) throw error
         const delay = retryDelayMs(policy, error, attempt)

@@ -37,6 +37,9 @@ export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（32k token）+ 多问题
 export const REFLEX_CREATE_TIMEOUT_MS = 300_000
 
 /** 系统一模型（象信·系统一）的别名。 / Alias of the System One model (象信·系统一). */
+/** 重试时附带的第几次重试（1 起），服务端据此区分首发与重试。 / Retry number sent on retries. */
+export const RETRY_COUNT_HEADER = 'x-xiangxin-retry-count'
+
 export const S1_MODEL = 'xiangxin-s1'
 
 /** 基础条件反射模型的别名。 / Alias of the base reflex model. */

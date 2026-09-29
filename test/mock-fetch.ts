@@ -34,7 +34,7 @@ export function mockFetch(...replies: Reply[]) {
 }
 
 export const SYSTEM_ONE_BODY = {
-  model: 'xiangxin-s1-1.0.0',
+  model: 'xiangxin-2.0.0',
   answers: {
     is_urgent: { type: 'noul', noul: 0.95 },
     department: {
@@ -56,8 +56,8 @@ export const SYSTEM_ONE_BODY = {
 
 export const MODELS_BODY = {
   models: [
-    { name: 'xiangxin-s1-latest', description: '最新正式版象信·系统一模型', release_date: '2026-10-01' },
-    { name: 'xiangxin-s1-preview', description: '最新版本（含预览）', release_date: '2026-10-01' },
+    { name: 'xiangxin-latest', description: '最新正式版', release_date: '2026-09-28' },
+    { name: 'xiangxin-preview', description: '预览版', release_date: '2026-09-28' },
   ],
 }
 
@@ -80,5 +80,5 @@ export async function fakeServer(url: string, init: RequestInit = {}): Promise<R
       answers[name] = { type: 'score', score: top, legend, probabilities, confidence: 1 }
     }
   }
-  return json({ model: 'xiangxin-s1-1.0.0', answers, usage: { input_tokens: 10, output_tokens: 1 } })
+  return json({ model: 'xiangxin-2.0.0', answers, usage: { input_tokens: 10, output_tokens: 1 } })
 }

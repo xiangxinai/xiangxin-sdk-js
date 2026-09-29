@@ -8,8 +8,6 @@ export {
   type XiangxinClientConfig,
   type RequestOptions,
   type Models,
-  type Reflexes,
-  type ReflexWaitOptions,
 } from './client.js'
 export { APIPromise } from './api-promise.js'
 export { noul, choice, score } from './helpers.js'
@@ -31,7 +29,6 @@ export {
   APIConnectionError,
   APITimeoutError,
   APIUserAbortError,
-  WaitTimeoutError,
 } from './errors.js'
 export { type RetryPolicy, DEFAULT_RETRY_POLICY } from './retry.js'
 export type { Logger } from './logger.js'
@@ -41,11 +38,6 @@ export {
   DEFAULT_BASE_URL,
   DEFAULT_MODEL,
   DEFAULT_TIMEOUT_MS,
-  REFLEX_CREATE_TIMEOUT_MS,
-  REFLEX_FINAL_STATUSES,
-  S1_MODEL,
-  REFLEX_MODEL,
-  reflexModel,
   REQUEST_ID_HEADER,
   RETRY_COUNT_HEADER,
   MODEL_MS_HEADER,
@@ -80,15 +72,6 @@ export type {
   SystemOneRequest,
   SystemOneRequestPayload,
   ModelCard,
-  ReflexLabel,
-  LabelFor,
-  ReflexExample,
-  ReflexCreateRequest,
-  ReflexStatus,
-  ReflexQuestionMetrics,
-  ReflexEvaluation,
-  ReflexMetrics,
-  Reflex,
   Fetch,
   WithResponse,
 } from './types.js'

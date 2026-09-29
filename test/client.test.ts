@@ -69,7 +69,7 @@ describe('configuration', () => {
   it('uses documented defaults', () => {
     const c = new XiangxinClient({ apiKey: KEY, fetch: mockFetch().fetch })
     expect(c.baseURL).toBe('https://api.xiangxinai.cn')
-    expect(c.defaultModel).toBe('xiangxin-s1-latest')
+    expect(c.defaultModel).toBe('xiangxin-latest')
     expect(c.timeout).toBe(120_000)
     expect(c.logLevel).toBe('warn')
     expect(c.retry.maxRetries).toBe(2)
@@ -117,7 +117,7 @@ describe('systemOne', () => {
     expect(call.init.signal).toBeInstanceOf(AbortSignal)
     expect(call.body).toEqual({
       state: { 工单: '我被重复扣费了两次' },
-      model: 'xiangxin-s1-latest',
+      model: 'xiangxin-latest',
       trace_id: 't1',
       questions: {
         is_urgent: { type: 'noul', instructions: '是否需要紧急处理？' },
@@ -130,7 +130,7 @@ describe('systemOne', () => {
       },
     })
 
-    expect(result.model).toBe('xiangxin-s1-1.0.0')
+    expect(result.model).toBe('xiangxin-2.0.0')
     expect(result.answers.is_urgent.noul).toBe(0.95)
     expect(result.answers.department.choice).toBe('billing')
     expect(result.answers.department.probabilities.technical).toBe(0.12)
@@ -140,10 +140,10 @@ describe('systemOne', () => {
 
   it('honours the model override and defaultModel', async () => {
     const { fetch, calls } = mockFetch(json(SYSTEM_ONE_BODY))
-    const c = client(fetch, { defaultModel: 'xiangxin-s1-preview' })
+    const c = client(fetch, { defaultModel: 'xiangxin-preview' })
     await c.systemOne({ state: 'x', questions })
-    await c.systemOne({ state: 'x', questions, model: 'xiangxin-s1-1.0.0' })
-    expect(calls.map((c) => c.body.model)).toEqual(['xiangxin-s1-preview', 'xiangxin-s1-1.0.0'])
+    await c.systemOne({ state: 'x', questions, model: 'xiangxin-2.0.0' })
+    expect(calls.map((c) => c.body.model)).toEqual(['xiangxin-preview', 'xiangxin-2.0.0'])
   })
 
   it('accepts plain question objects', async () => {
@@ -203,9 +203,9 @@ describe('models.list', () => {
     expect(calls[0]!.init.method).toBe('GET')
     expect(calls[0]!.init.body).toBeUndefined()
     expect(calls[0]!.headers['content-type']).toBeUndefined()
-    expect(models.map((m) => m.name)).toEqual(['xiangxin-s1-latest', 'xiangxin-s1-preview'])
+    expect(models.map((m) => m.name)).toEqual(['xiangxin-latest', 'xiangxin-preview'])
     const { data, requestId } = await c.models.list().withResponse()
-    expect(data[0]!.release_date).toBe('2026-10-01')
+    expect(data[0]!.release_date).toBe('2026-09-28')
     expect(requestId).toBe('req_123')
   })
 })
@@ -217,7 +217,7 @@ describe('errors', () => {
     [402, { detail: 'insufficient_balance' }, InsufficientBalanceError],
     [403, { detail: 'forbidden' }, PermissionDeniedError],
     [404, { detail: 'model_not_found' }, NotFoundError],
-    [409, { detail: 'reflex_not_ready' }, ConflictError],
+    [409, { detail: 'conflict' }, ConflictError],
     [413, { detail: 'request_too_large' }, RequestTooLargeError],
     [422, { detail: [{ loc: ['body', 'questions'], msg: 'Field required' }] }, UnprocessableEntityError],
     [429, { detail: 'rate_limited' }, RateLimitError],
@@ -275,7 +275,7 @@ describe('retries', () => {
     expect(fetch).toHaveBeenCalledTimes(1)
     await vi.advanceTimersByTimeAsync(200)
     expect(fetch).toHaveBeenCalledTimes(2)
-    expect((await p).model).toBe('xiangxin-s1-1.0.0')
+    expect((await p).model).toBe('xiangxin-2.0.0')
   })
 
   it('prefers retry-after-ms; hints beyond maxRetryAfterMs fall back to backoff', async () => {
@@ -374,7 +374,7 @@ describe('timeouts and cancellation', () => {
     const { fetch } = mockFetch('hang', json(SYSTEM_ONE_BODY))
     const p = client(fetch).systemOne({ state: 'x', questions }, { timeout: 50 })
     await vi.advanceTimersByTimeAsync(100)
-    expect((await p).model).toBe('xiangxin-s1-1.0.0')
+    expect((await p).model).toBe('xiangxin-2.0.0')
     expect(fetch).toHaveBeenCalledTimes(2)
   })
 

@@ -5,8 +5,6 @@ import {
   DEFAULT_MODEL,
   DEFAULT_TIMEOUT_MS,
   ENV,
-  REFLEX_CREATE_TIMEOUT_MS,
-  REFLEX_FINAL_STATUSES,
   REQUEST_ID_HEADER,
   type LogLevel,
   RETRY_COUNT_HEADER,
@@ -17,7 +15,6 @@ import {
   APIResponseValidationError,
   APITimeoutError,
   APIUserAbortError,
-  WaitTimeoutError,
   XiangxinError,
 } from './errors.js'
 import { consoleLogger, filterLogger, parseLogLevel, redactHeaders, type Logger } from './logger.js'
@@ -26,9 +23,6 @@ import type {
   Fetch,
   ModelCard,
   Questions,
-  Reflex,
-  ReflexCreateRequest,
-  ReflexMetrics,
   SystemOneRequest,
   SystemOneResult,
 } from './types.js'
@@ -48,8 +42,8 @@ export interface XiangxinClientConfig {
    */
   baseURL?: string
   /**
-   * 请求省略 `model` 时使用的模型，默认读取 `XIANGXIN_DEFAULT_MODEL`，否则为 `xiangxin-s1-latest`。
-   * / Default model; falls back to `XIANGXIN_DEFAULT_MODEL`, then `xiangxin-s1-latest`.
+   * 请求省略 `model` 时使用的模型，默认读取 `XIANGXIN_DEFAULT_MODEL`，否则为 `xiangxin-latest`。
+   * / Default model; falls back to `XIANGXIN_DEFAULT_MODEL`, then `xiangxin-latest`.
    */
   defaultModel?: string
   /** 每次尝试的超时（毫秒），默认 120000。 / Timeout per attempt in ms. Default 120000. */
@@ -93,61 +87,8 @@ export interface Models {
   list(options?: RequestOptions): APIPromise<ModelCard[]>
 }
 
-/** `reflexes.wait` 的选项。 / Options of `reflexes.wait`. */
-export interface ReflexWaitOptions extends RequestOptions {
-  /** 两次查询的间隔（毫秒），默认 2000。 / Delay between polls in ms. Default 2000. */
-  pollIntervalMs?: number
-  /**
-   * 最长等待时间（毫秒），超出抛 `WaitTimeoutError`；默认不限。`timeout` 仍是每次查询的 HTTP 超时。
-   * / Maximum total wait in ms; `timeout` stays the per-request HTTP timeout. Default unlimited.
-   */
-  waitTimeoutMs?: number
-}
-
-/**
- * 条件反射资源：`client.reflexes`。用标注数据练出自己的反射，再以
- * `model: reflexModel(name)` 调用 `systemOne`。
- *
- * The reflexes resource: train your own reflex from labeled data, then call
- * `systemOne` with `model: reflexModel(name)`.
- */
-export interface Reflexes {
-  /**
-   * 提交训练：新建反射，或给同名反射重练（新版本练好前旧版本照常可用）。标注类型由问题推断：
-   * Noul 标 `true/false`，Choice 标选项名，Score 标档位下标；可以只标部分问题。
-   * 默认超时不短于 300 秒，且默认不重试超时（避免重复提交）；409 / 422 从不重试。
-   *
-   * Submit training, or retrain an existing reflex of the same name. The default
-   * timeout is at least 300s and timeouts are not retried by default.
-   *
-   * 以下情况会以错误拒绝 / Rejects with:
-   * - `ConflictError`：`reflex_busy`（正在训练）或 `too_many_reflexes`。
-   * - `UnprocessableEntityError`：名字不合法、样本过少 / 过多、问题或标注不合法。
-   * - `RequestTooLargeError`：请求体超过 50MB。
-   * - `InternalServerError`：`trainer_unavailable`（503，会自动重试）。
-   */
-  create<const Q extends Questions>(request: ReflexCreateRequest<Q>, options?: RequestOptions): APIPromise<Reflex>
-  /** 列出本组织的反射，新建的在前。 / List the organization's reflexes, newest first. */
-  list(options?: RequestOptions): APIPromise<Reflex[]>
-  /** 查询一个反射（含训练进度与成绩）；不存在时以 `NotFoundError` 拒绝。 / Get a reflex. */
-  get(name: string, options?: RequestOptions): APIPromise<Reflex>
-  /** 取消排队或训练中的任务；已有旧版本则旧版本继续可用。 / Cancel training; a live version stays live. */
-  cancel(name: string, options?: RequestOptions): APIPromise<Reflex>
-  /** 删除反射及其权重，名字可以重用。 / Delete a reflex and its weights. */
-  delete(name: string, options?: RequestOptions): APIPromise<void>
-  /**
-   * 轮询直到训练结束（`ready` / `failed` / `cancelled`）并返回反射；重练时 `ready` 表示新版本已上线。
-   * 训练失败或被取消时照常返回，请检查 `status`；超过 `waitTimeoutMs` 以 `WaitTimeoutError` 拒绝。
-   *
-   * Poll until training reaches a final status and return the reflex. Failed or
-   * cancelled trainings resolve normally; exceeding `waitTimeoutMs` rejects with `WaitTimeoutError`.
-   */
-  wait(name: string, options?: ReflexWaitOptions): Promise<Reflex>
-}
-
 const SYSTEM_ONE_PATH = '/v1/systemone'
 const MODELS_PATH = '/v1/models'
-const REFLEXES_PATH = '/v1/reflexes'
 const PROTECTED_HEADERS = new Set(['authorization', 'accept'])
 const QUESTION_TYPES = new Set(['noul', 'choice', 'score'])
 
@@ -225,66 +166,6 @@ function validateSystemOneRequest(request: unknown): void {
     throw new XiangxinError('model 必须是非空字符串 / model must be a non-empty string')
   }
   validateQuestions(questions)
-}
-
-function validateReflexName(name: unknown): asserts name is string {
-  if (typeof name !== 'string' || name === '') {
-    throw new XiangxinError('反射名不能为空 / reflex name must be a non-empty string')
-  }
-}
-
-function validateReflexCreateRequest(request: unknown): void {
-  if (!isPlainObject(request)) throw new XiangxinError('request 必须是对象 / request must be an object')
-  const { name, questions, examples, description } = request
-  validateReflexName(name)
-  validateQuestions(questions)
-  if (!Array.isArray(examples) || examples.length === 0) {
-    throw new XiangxinError('examples 必须是非空数组 / examples must be a non-empty array')
-  }
-  examples.forEach((example: unknown, i) => {
-    if (!isPlainObject(example) || example.state === undefined || example.state === null || !isPlainObject(example.answers)) {
-      throw new XiangxinError(
-        `第 ${i} 条样本须为 {state, answers} 对象 / example ${i} must be an object with state and answers`,
-      )
-    }
-  })
-  if (description !== undefined && typeof description !== 'string') {
-    throw new XiangxinError('description 必须是字符串 / description must be a string')
-  }
-}
-
-function reflexPath(name: string, suffix = ''): string {
-  validateReflexName(name)
-  return `${REFLEXES_PATH}/${encodeURIComponent(name)}${suffix}`
-}
-
-const str = (v: unknown): string | null => (typeof v === 'string' ? v : null)
-const num = (v: unknown): number | null => (typeof v === 'number' && Number.isFinite(v) ? v : null)
-
-/** 宽松解析反射对象：忽略未知字段，缺失的可选字段取默认值。 / Tolerant reflex parsing. */
-function toReflex(data: unknown): Reflex | undefined {
-  if (!isPlainObject(data) || typeof data.id !== 'string' || typeof data.name !== 'string' || typeof data.status !== 'string') {
-    return undefined
-  }
-  const queuePosition = num(data.queue_position)
-  return {
-    id: data.id,
-    name: data.name,
-    model: str(data.model) ?? `xiangxin-reflex:${data.name}`,
-    description: str(data.description) ?? '',
-    status: data.status,
-    usable: data.usable === true,
-    progress: num(data.progress) ?? 0,
-    stage: str(data.stage),
-    ...(queuePosition === null ? {} : { queue_position: queuePosition }),
-    questions: isPlainObject(data.questions) ? (data.questions as Reflex['questions']) : {},
-    examples: num(data.examples),
-    metrics: isPlainObject(data.metrics) ? (data.metrics as ReflexMetrics) : null,
-    error: str(data.error),
-    created_at: str(data.created_at),
-    updated_at: str(data.updated_at),
-    trained_at: str(data.trained_at),
-  }
 }
 
 function validateQuestions(questions: unknown): void {
@@ -379,8 +260,6 @@ export class XiangxinClient {
   readonly logLevel: LogLevel
   /** 模型资源。 / The models resource. */
   readonly models: Models
-  /** 条件反射资源。 / The reflexes resource. */
-  readonly reflexes: Reflexes
 
   readonly #apiKey: string
 
@@ -430,73 +309,6 @@ export class XiangxinClient {
           return data.models as ModelCard[]
         }),
     }
-
-    const reflex = (raw: RawResponse): Reflex => {
-      const data = this.#json(raw)
-      const r = toReflex(data)
-      if (!r) throw this.#invalid(raw, data, '响应不是反射对象 / response is not a reflex object')
-      return r
-    }
-    const get = (name: string, options: RequestOptions = {}): APIPromise<Reflex> =>
-      new APIPromise(
-        Promise.resolve().then(() => this.#request('GET', reflexPath(name), undefined, options)),
-        reflex,
-      )
-    this.reflexes = {
-      create: (request, options = {}) => {
-        const raw = Promise.resolve().then(() => {
-          validateReflexCreateRequest(request)
-          const timeout = options.timeout ?? Math.max(this.timeout, REFLEX_CREATE_TIMEOUT_MS)
-          const retry = { apiTimeoutError: false, ...(options.retry ?? {}) }
-          return this.#request('POST', REFLEXES_PATH, request, { ...options, timeout, retry })
-        })
-        return new APIPromise(raw, reflex)
-      },
-      list: (options = {}) =>
-        new APIPromise(this.#request('GET', REFLEXES_PATH, undefined, options), (raw) => {
-          const data = this.#json(raw)
-          const items = isPlainObject(data) && Array.isArray(data.reflexes) ? data.reflexes.map(toReflex) : undefined
-          if (!items || items.some((r) => r === undefined)) {
-            throw this.#invalid(raw, data, '响应缺少 reflexes 数组 / response is missing the reflexes array')
-          }
-          return items as Reflex[]
-        }),
-      get,
-      cancel: (name, options = {}) =>
-        new APIPromise(
-          Promise.resolve().then(() => this.#request('POST', reflexPath(name, '/cancel'), undefined, options)),
-          reflex,
-        ),
-      delete: (name, options = {}) =>
-        new APIPromise(
-          Promise.resolve().then(() => this.#request('DELETE', reflexPath(name), undefined, options)),
-          () => undefined,
-        ),
-      wait: async (name, options = {}) => {
-        const { pollIntervalMs = 2000, waitTimeoutMs, ...requestOptions } = options
-        validateTimeout(pollIntervalMs, 'pollIntervalMs')
-        if (waitTimeoutMs !== undefined && !(typeof waitTimeoutMs === 'number' && waitTimeoutMs >= 0)) {
-          throw new XiangxinError('waitTimeoutMs 必须是非负数（毫秒） / waitTimeoutMs must be a non-negative number')
-        }
-        const deadline = waitTimeoutMs === undefined ? undefined : Date.now() + waitTimeoutMs
-        for (;;) {
-          const r = await get(name, requestOptions)
-          if (REFLEX_FINAL_STATUSES.has(r.status)) return r
-          let delay = pollIntervalMs
-          if (deadline !== undefined) {
-            const remaining = deadline - Date.now()
-            if (remaining <= 0) {
-              throw new WaitTimeoutError(
-                `等待反射 ${JSON.stringify(name)} 超时，当前状态 ${r.status} / timed out waiting for reflex ${JSON.stringify(name)} (status=${r.status})`,
-                r,
-              )
-            }
-            delay = Math.min(delay, remaining)
-          }
-          await sleep(delay, requestOptions.signal)
-        }
-      },
-    }
   }
 
   /**
@@ -506,7 +318,7 @@ export class XiangxinClient {
    * Ask named questions about `state` and get every answer in one forward pass.
    * Answer types are inferred from the questions.
    *
-   * @param request state、questions 与可选的 model（如 `S1_MODEL`、`REFLEX_MODEL` 或 `reflexModel(name)`）；
+   * @param request state、questions 与可选的 model（默认 `xiangxin-latest`，也可传版本化 ID 如 `xiangxin-2.0.0`）；
    *   其余字段原样转发。 / State, questions and optional model; other fields are forwarded.
    * @param options 单次调用的超时、重试、请求头与取消信号。 / Per-call options.
    * @returns 可 `await` 的 {@link APIPromise}；`.withResponse()` 额外返回 HTTP 响应。

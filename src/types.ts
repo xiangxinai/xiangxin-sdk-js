@@ -153,7 +153,7 @@ export interface Usage {
 
 /** `systemOne` 的结果。 / Result of `systemOne`. */
 export interface SystemOneResult<Q extends Questions = Questions> {
-  /** 实际作答的模型版本，如 `xiangxin-s1-1.0.0`。 / Resolved model, e.g. `xiangxin-s1-1.0.0`. */
+  /** 实际作答的模型版本，如 `xiangxin-2.0.0`。 / Resolved model, e.g. `xiangxin-2.0.0`. */
   readonly model: string
   /** 按问题名索引、带类型的答案。 / Typed answers keyed by question name. */
   readonly answers: { readonly [K in keyof Q]: ResultFor<Q[K]> }
@@ -189,138 +189,6 @@ export interface ModelCard {
   readonly description: string
   /** 发布日期 `YYYY-MM-DD`。 / Release date `YYYY-MM-DD`. */
   readonly release_date: string
-}
-
-// ---------------------------------------------------------------------------
-// 条件反射 / Reflexes
-// ---------------------------------------------------------------------------
-
-/** 一条标注：Noul 为布尔值，Choice 为选项名，Score 为档位下标（从 0 起）。 / One label. */
-export type ReflexLabel = boolean | string | number
-
-/**
- * 由问题类型推出标注类型：Noul → `boolean`，Choice → 选项名，Score → 档位下标。
- *
- * The label type for a question: boolean, a choice label, or a score level index.
- */
-export type LabelFor<T> = T extends { type: 'noul' }
-  ? boolean
-  : T extends { type: 'choice'; criteria: infer C extends ChoiceCriteria }
-    ? keyof C & string
-    : T extends { type: 'score' }
-      ? number
-      : ReflexLabel
-
-/**
- * 练反射用的一条样本；`answers` 可以只标部分问题。
- *
- * One training example; `answers` may label only some of the questions.
- */
-export interface ReflexExample<Q extends Questions = Questions> {
-  /** 样本内容。 / The example's state. */
-  state: State
-  /** 问题名 → 标注。 / Question name → label. */
-  answers: { readonly [K in keyof Q]?: LabelFor<Q[K]> }
-}
-
-/** 阻止 TypeScript 从该位置推断泛型。 / Blocks generic inference at this position. */
-type NoInfer_<T> = [T][T extends unknown ? 0 : never]
-
-/** `reflexes.create` 的请求参数。 / Arguments of `reflexes.create`. */
-export interface ReflexCreateRequest<Q extends Questions = Questions> {
-  /** 反射名，满足 `^[a-z0-9][a-z0-9-]{0,62}$`；同名已存在则重练。 / Reflex name; an existing name is retrained. */
-  name: string
-  /** 问题定义（≤ 32 个），与 `systemOne` 相同。 / Questions (at most 32), as for `systemOne`. */
-  questions: Q
-  /** 10–50,000 条标注样本。 / 10–50,000 labeled examples. */
-  examples: readonly ReflexExample<NoInfer_<Q>>[]
-  /** 可选说明（≤ 500 字）。 / Optional description. */
-  description?: string
-  /** 其他字段原样合并到请求体顶层。 / Extra fields are forwarded at the body's top level. */
-  [extra: string]: unknown
-}
-
-/** 反射状态。 / Reflex status. */
-export type ReflexStatus = 'queued' | 'training' | 'ready' | 'failed' | 'cancelled'
-
-/** 单个问题上的成绩。 / Scores on one question. */
-export interface ReflexQuestionMetrics {
-  /** 准确率（0–1）。 / Accuracy (0–1). */
-  readonly accuracy?: number
-  /** 参与评测的标注条数。 / Number of labels evaluated. */
-  readonly n?: number
-}
-
-/** 一组评测成绩（练之前或练之后）。 / One set of evaluation scores. */
-export interface ReflexEvaluation {
-  /** 准确率（0–1）。 / Accuracy (0–1). */
-  readonly accuracy?: number
-  /** 对数损失，越小越好。 / Log loss; lower is better. */
-  readonly log_loss?: number
-  /** 期望校准误差，越小越好。 / Expected calibration error; lower is better. */
-  readonly ece?: number
-  /** 问题名 → 该问题的成绩。 / Question name → its scores. */
-  readonly per_question?: { readonly [name: string]: ReflexQuestionMetrics }
-}
-
-/**
- * 训练结果。样本 ≥ 20 条时按留出的验证集计，否则按训练集计（见 `evaluated_on`）。
- *
- * Training results, measured on a held-out split with ≥ 20 examples, else on the training set.
- */
-export interface ReflexMetrics {
-  /** 样本总数。 / Total examples. */
-  readonly examples?: number
-  /** 训练集条数。 / Training examples. */
-  readonly train_examples?: number
-  /** 验证集条数。 / Validation examples. */
-  readonly val_examples?: number
-  /** `"val"` 或 `"train"`。 / `"val"` or `"train"`. */
-  readonly evaluated_on?: string
-  /** 实际训练轮数。 / Epochs trained. */
-  readonly epochs?: number
-  /** 训练耗时（秒）。 / Training time in seconds. */
-  readonly duration_s?: number
-  /** 基础条件反射在同一评测集上的成绩（练之前）。 / The base reflex on the same split. */
-  readonly before?: ReflexEvaluation | null
-  /** 练之后的成绩。 / Scores after training. */
-  readonly after?: ReflexEvaluation | null
-}
-
-/** 一个练出来的条件反射。推理时把 `model` 传给 `systemOne`。 / A trained reflex; pass `model` to `systemOne`. */
-export interface Reflex {
-  /** 反射 ID，如 `rf_…`。 / Reflex ID. */
-  readonly id: string
-  /** 反射名。 / Reflex name. */
-  readonly name: string
-  /** 推理用模型名 `xiangxin-reflex:<name>`。 / Model name for inference. */
-  readonly model: string
-  /** 说明。 / Description. */
-  readonly description: string
-  /** 状态；未来可能出现新的取值。 / Status; new values may appear. */
-  readonly status: ReflexStatus | (string & {})
-  /** 已有练好的版本可用于推理（重练期间旧版本照常可用）。 / A trained version is live. */
-  readonly usable: boolean
-  /** 当前训练进度（0–1）。 / Progress of the current training. */
-  readonly progress: number
-  /** 当前阶段。 / Current stage. */
-  readonly stage: string | null
-  /** 排队位置（仅 `queued` 时）。 / Queue position while `queued`. */
-  readonly queue_position?: number
-  /** 问题定义。 / Question definitions. */
-  readonly questions: { readonly [name: string]: JsonValue }
-  /** 最近一次提交的样本条数。 / Number of examples last submitted. */
-  readonly examples: number | null
-  /** 最近一次成功训练的成绩。 / Results of the last successful training. */
-  readonly metrics: ReflexMetrics | null
-  /** 失败原因。 / Failure reason. */
-  readonly error: string | null
-  /** 创建时间（ISO 8601）。 / Creation time. */
-  readonly created_at: string | null
-  /** 最近一次状态变化时间。 / Time of the last status change. */
-  readonly updated_at: string | null
-  /** 最近一次训练完成时间。 / Time the last training finished. */
-  readonly trained_at: string | null
 }
 
 /** 与全局 `fetch` 兼容的实现。 / A fetch implementation compatible with the global `fetch`. */

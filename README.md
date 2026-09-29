@@ -1,8 +1,8 @@
 # 象信 AI JavaScript / TypeScript SDK
 
-`@xiangxinai/sdk` 是 [象信 AI](https://xiangxinai.cn) 的官方 JavaScript / TypeScript SDK，用于调用**象信·系统一**系统一模型。
+`@xiangxinai/sdk` 是 [象信 AI](https://xiangxinai.cn) 的官方 JavaScript / TypeScript SDK，用于调用系统一模型**象信（xiangxin）**。
 
-象信·系统一不生成文本：你给它一段**状态（state）**和一组**带类型的问题**，它一次前向就返回带校准概率的结构化答案。
+象信不生成文本：你给它一段**状态（state）**和一组**带类型的问题**，它一次前向就返回带校准概率的结构化答案。
 
 | 原语 | 辅助函数 | 答案字段 |
 |---|---|---|
@@ -58,7 +58,7 @@ answers.department.choice       // 'billing'，类型为 'billing' | 'technical'
 answers.department.confidence   // 0.81
 answers.frustration.score       // 1.05
 answers.frustration.legend['2'] // '非常愤怒'
-console.log(model, usage.input_tokens) // xiangxin-s1-1.0.0 296
+console.log(model, usage.input_tokens) // xiangxin-2.0.0 296
 ```
 
 CommonJS 同样可用：
@@ -86,51 +86,14 @@ const models = await client.models.list()
 for (const m of models) console.log(m.name, m.release_date, m.description)
 ```
 
-默认模型为 `xiangxin-s1-latest`。可以用 `new XiangxinClient({ defaultModel })` 或单次调用的 `model` 覆盖。
+只有一个模型：象信（xiangxin）。`models.list()` 列出可在 `model` 中使用的别名：
 
-两个模型家族共用同一个 `systemOne` 接口，只换 `model`：
+| 模型 | 说明 |
+|---|---|
+| `xiangxin-latest` | 最新正式版，SDK 默认值 |
+| `xiangxin-preview` | 预览版；当前没有预览版，指向与 `xiangxin-latest` 相同的版本 |
 
-| 模型 | 常量 | 说明 |
-|---|---|---|
-| `xiangxin-s1` | `S1_MODEL` | 系统一（象信·系统一），有世界知识，零样本即可判断 |
-| `xiangxin-reflex` | `REFLEX_MODEL` | 基础条件反射，毫秒级、固定耗时，价格为系统一的 1/100 |
-| `xiangxin-reflex:<名字>` | `reflexModel('<名字>')` | 用你自己的数据练出来的反射 |
-
-## 条件反射
-
-条件反射用来替代正则：给它 10–50,000 条标注样本，就能练出一个只属于你组织的反射，推理毫秒级、耗时固定。它没有世界知识，适合分流、意图、垃圾 / 敏感检测、格式检查这类“看一眼就该反应”的判断；需要常识或推理的问题请用系统一。
-
-```ts
-import { XiangxinClient, choice, noul, reflexModel } from '@xiangxinai/sdk'
-
-const client = new XiangxinClient()
-const questions = {
-  department: choice('分派部门', { billing: null, technical: null, sales: null }),
-  is_urgent: noul('是否需要当天处理？'),
-}
-
-await client.reflexes.create({
-  name: 'ticket-router',
-  description: '工单分流',
-  questions,
-  examples: [
-    // Noul 标 true/false，Choice 标选项名（有类型检查），Score 标档位下标；可以只标部分问题
-    { state: '我被重复扣费了两次', answers: { department: 'billing', is_urgent: true } },
-    { state: 'App 打不开，一直闪退', answers: { department: 'technical' } },
-    // ……至少 10 条
-  ],
-})
-
-const reflex = await client.reflexes.wait('ticket-router') // 轮询到 ready / failed / cancelled
-if (reflex.status === 'ready') console.log(reflex.metrics?.before?.accuracy, '→', reflex.metrics?.after?.accuracy)
-
-const { answers } = await client.systemOne({ state: '退款什么时候到账？', questions, model: reflexModel('ticket-router') })
-```
-
-- 同名再 `create` 即**重练**；新版本练好前旧版本照常可用（`reflex.usable`），训练中再次提交会以 `ConflictError`（`reflex_busy`）拒绝。
-- `client.reflexes.list()` / `get(name)` / `cancel(name)` / `delete(name)` 管理反射；`wait(name, { pollIntervalMs: 2000, waitTimeoutMs })` 超时以 `WaitTimeoutError` 拒绝，训练失败或被取消时照常返回，请检查 `status`。
-- `create` 默认超时不短于 300 秒（请求体上限 50MB），且默认不重试超时，避免重复提交。
-- 首次训练尚未完成时用该反射推理会以 `ConflictError`（`reflex_not_ready`）拒绝。
+响应里的 `model` 是实际使用的版本化 ID，如 `xiangxin-2.0.0`；需要固定版本时可直接传版本化 ID。可以用 `new XiangxinClient({ defaultModel })` 或单次调用的 `model` 覆盖。
 
 ## 读取响应头
 
@@ -148,9 +111,8 @@ response.headers.get('x-xiangxin-model-ms') // 模型耗时（毫秒）
 | `AuthenticationError` | 401 | API 密钥缺失、无效或已禁用 |
 | `InsufficientBalanceError` | 402 | 余额不足，请到控制台充值 |
 | `PermissionDeniedError` | 403 | 无权访问 |
-| `NotFoundError` | 404 | 模型或反射不存在 |
-| `ConflictError` | 409 | 反射尚未练好（`reflex_not_ready`）、正在训练（`reflex_busy`）或数量已达上限（`too_many_reflexes`） |
-| `RequestTooLargeError` | 413 | 请求体过大（练反射的样本超过 50MB） |
+| `NotFoundError` | 404 | 模型不存在（`model_not_found`） |
+| `RequestTooLargeError` | 413 | 请求体过大 |
 | `UnprocessableEntityError` | 422 | 请求校验失败（选项过多、超出 token 上限等） |
 | `RateLimitError` | 429 | 超出速率限制（`.retryAfter` 为建议等待秒数） |
 | `OverloadedError` | 529 | 服务过载，稍后重试 |
@@ -198,7 +160,7 @@ const client = new XiangxinClient({ logLevel: 'info', logger: myLogger }) // log
 |---|---|---|
 | `XIANGXIN_API_KEY` | API 密钥（必填） | — |
 | `XIANGXIN_BASE_URL` | API 根地址 | `https://api.xiangxinai.cn` |
-| `XIANGXIN_DEFAULT_MODEL` | 默认模型 | `xiangxin-s1-latest` |
+| `XIANGXIN_DEFAULT_MODEL` | 默认模型 | `xiangxin-latest` |
 | `XIANGXIN_LOG` | 日志级别 | `warn` |
 
 显式传入的参数优先于环境变量。

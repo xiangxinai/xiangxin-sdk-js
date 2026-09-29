@@ -91,7 +91,6 @@ for (const m of models) console.log(m.name, m.release_date, m.description)
 | 模型 | 说明 |
 |---|---|
 | `xiangxin-latest` | 最新正式版，SDK 默认值 |
-| `xiangxin-preview` | 预览版；当前没有预览版，指向与 `xiangxin-latest` 相同的版本 |
 
 响应里的 `model` 是实际使用的版本化 ID，如 `xiangxin-2.0.0`；需要固定版本时可直接传版本化 ID。可以用 `new XiangxinClient({ defaultModel })` 或单次调用的 `model` 覆盖。
 

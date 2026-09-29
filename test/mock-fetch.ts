@@ -57,7 +57,7 @@ export const SYSTEM_ONE_BODY = {
 export const MODELS_BODY = {
   models: [
     { name: 'xiangxin-latest', description: '最新正式版', release_date: '2026-09-28' },
-    { name: 'xiangxin-preview', description: '预览版', release_date: '2026-09-28' },
+    { name: 'xiangxin-2.0.0', description: '象信 2.0', release_date: '2026-09-28' },
   ],
 }
 

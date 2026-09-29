@@ -140,10 +140,10 @@ describe('systemOne', () => {
 
   it('honours the model override and defaultModel', async () => {
     const { fetch, calls } = mockFetch(json(SYSTEM_ONE_BODY))
-    const c = client(fetch, { defaultModel: 'xiangxin-preview' })
+    const c = client(fetch, { defaultModel: 'my-pinned-model' })
     await c.systemOne({ state: 'x', questions })
     await c.systemOne({ state: 'x', questions, model: 'xiangxin-2.0.0' })
-    expect(calls.map((c) => c.body.model)).toEqual(['xiangxin-preview', 'xiangxin-2.0.0'])
+    expect(calls.map((c) => c.body.model)).toEqual(['my-pinned-model', 'xiangxin-2.0.0'])
   })
 
   it('accepts plain question objects', async () => {
@@ -203,7 +203,7 @@ describe('models.list', () => {
     expect(calls[0]!.init.method).toBe('GET')
     expect(calls[0]!.init.body).toBeUndefined()
     expect(calls[0]!.headers['content-type']).toBeUndefined()
-    expect(models.map((m) => m.name)).toEqual(['xiangxin-latest', 'xiangxin-preview'])
+    expect(models.map((m) => m.name)).toEqual(['xiangxin-latest', 'xiangxin-2.0.0'])
     const { data, requestId } = await c.models.list().withResponse()
     expect(data[0]!.release_date).toBe('2026-09-28')
     expect(requestId).toBe('req_123')

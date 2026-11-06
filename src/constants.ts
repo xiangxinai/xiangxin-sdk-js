@@ -31,7 +31,7 @@ export const DEFAULT_BASE_URL = 'https://api.xiangxinai.cn'
 export const DEFAULT_MODEL = 'xiangxin-latest'
 
 /** 每次尝试的默认超时（毫秒）。 / Default timeout per attempt, in milliseconds. */
-export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（32k token）+ 多问题的请求可达约 60 秒
+export const DEFAULT_TIMEOUT_MS = 120_000 // 长 state（64k token）+ 多问题的请求可达约 60 秒
 
 /** 重试时附带的第几次重试（1 起），服务端据此区分首发与重试。 / Retry number sent on retries. */
 export const RETRY_COUNT_HEADER = 'x-xiangxin-retry-count'
